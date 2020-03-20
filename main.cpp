@@ -6,7 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#define CUMULATIVE_CENTER 3
+#define MAX_CENTER_BUFFER 2
 
 using namespace cv;
 
@@ -16,12 +16,12 @@ std::vector<std::vector<Point> > get_contours(Mat &upper_third, Mat &prev_upper_
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
 int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
-direction get_average_direction(std::deque<Point2f> &current_centers, std::deque<Point2f> &prev_centers);
+direction get_direction(std::deque<Point2f> &center_buffer);
 
 int main(int argc, char* argv[]) {
     VideoCapture cap(0);
 
-    std::deque<Point2f> prev_centers, current_centers;
+    std::deque<Point2f> center_buffer;
     direction prev_dir;
     int throws = 0;
     Mat frame, upper_third, prev_upper_third;
@@ -55,15 +55,10 @@ int main(int argc, char* argv[]) {
         minEnclosingCircle(contours_poly, center, radius);
 
         // ensure we only keep <CUMULATIVE_CENTER> elements
-        if (current_centers.size() > CUMULATIVE_CENTER) {
-            current_centers.pop_front();
+        if (center_buffer.size() > MAX_CENTER_BUFFER) {
+            center_buffer.pop_front();
         }
-        current_centers.push_back(center);
-
-        // copy current queue elements onto previous queue when previous queue is still being initiated
-        if (prev_centers.size() < CUMULATIVE_CENTER) {
-            prev_centers.push_back(center);
-        }
+        center_buffer.push_back(center);
 
         // Point2f center = centers[i];
         // Scalar color(rand()&255, rand()&255, rand()&255);
@@ -74,17 +69,12 @@ int main(int argc, char* argv[]) {
         // circle outline
         circle(frame, center, radius, Scalar(0,0,255), 3, 8, 0);
 
-        direction dir = get_average_direction(current_centers, prev_centers);
+        direction dir = get_direction(center_buffer);
         if (prev_dir == upwards && dir == downwards) {
             throws += 1;
             std::cout << throws << std::endl;
         }
         prev_dir = dir;
-
-        if (prev_centers.size() > CUMULATIVE_CENTER) {
-            prev_centers.pop_front();
-        }
-        prev_centers.push_back(center);
 
         imshow("Frame", frame);
         if (waitKey(10) == 27) break;
@@ -155,23 +145,14 @@ int get_largest_contour_idx(std::vector<std::vector<Point> > &contours) {
     return contour_idx;
 }
 
-direction get_average_direction(std::deque<Point2f> &current_centers, std::deque<Point2f> &prev_centers) {
-    // Point prev_center = find_closest_previous_center(center, prev_centers);
+direction get_direction(std::deque<Point2f> &center_buffer) {
+    int center_buffer_size = center_buffer.size();  // will be smaller initially
 
-    Point2f avg_current, avg_prev;
-
-    for (int i = 0; i < current_centers.size(); ++i) {
-        avg_current += current_centers[i];
-    }
-    avg_current /= (float)current_centers.size();
-
-    for (int i = 0; i < prev_centers.size(); ++i) {
-        avg_prev += prev_centers[i];
-    }
-    avg_prev /= (float)prev_centers.size();
+    Point2f past_point = center_buffer[center_buffer_size - 1]; 
+    Point2f current_point = center_buffer[0];
 
     // row-major order
-    if (avg_prev.y > avg_current.y) {
+    if (past_point.y > current_point.y) {
         return upwards;
     } else {
         return downwards;
