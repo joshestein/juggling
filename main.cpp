@@ -35,6 +35,10 @@ int main(int argc, char* argv[]) {
         direction dir;
 
         HoughCircles(upper_third_grey, circles, HOUGH_GRADIENT, 1, upper_third_grey.rows/8, 100, 22, 0, 0);
+        if (circles.size() == 0) {
+            centers.clear();
+            prev_dir = upwards;
+        }
         
         for( size_t i = 0; i < circles.size(); ++i) {
             Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
