@@ -9,6 +9,7 @@ using namespace cv;
 
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
+int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
 
 enum direction {upwards, downwards};
 
@@ -59,15 +60,7 @@ int main(int argc, char* argv[]) {
         }
 
         // find largest circle
-        double largest_area = 0.0;
-        int contour_idx = 0;
-        for (int i = 0; i < contours.size(); ++i) {
-            double area = contourArea(contours[i]);
-            if (area > largest_area) {
-                largest_area = area;
-                contour_idx = i;
-            } 
-        }
+        int contour_idx = get_largest_contour_idx(contours);
 
         // std::vector<std::vector<Point> > contours_poly(contours.size());
         // std::vector<Point2f> centers(contours.size());
@@ -135,4 +128,17 @@ double euclidean_distance(Point2f &p1, Point2f &p2) {
     double d_y = p1.y - p2.y;
 
     return sqrt(pow(d_x, 2) + pow(d_y, 2));
+}
+
+int get_largest_contour_idx(std::vector<std::vector<Point> > &contours) {
+    double largest_area = 0.0;
+    int contour_idx = 0;
+    for (int i = 0; i < contours.size(); ++i) {
+        double area = contourArea(contours[i]);
+        if (area > largest_area) {
+            largest_area = area;
+            contour_idx = i;
+        } 
+    }
+    return contour_idx;
 }
