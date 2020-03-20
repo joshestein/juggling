@@ -9,6 +9,7 @@ using namespace cv;
 
 enum direction {upwards, downwards};
 
+std::vector<std::vector<Point> > get_contours(Mat &upper_third, Mat &prev_upper_third);
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
 int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
@@ -19,38 +20,15 @@ int main(int argc, char* argv[]) {
     std::vector<Point2f> prev_centers;
     direction prev_dir = upwards;
     int throws = 0;
-    Mat prev_upper_third;
+    Mat frame, upper_third, prev_upper_third;
 
     while(true) {
-        Mat frame, upper_third, frame_delta, processed_frame;
         cap >> frame;
 
         upper_third = frame(Rect(0, 0, frame.cols, frame.rows/2));
 
-        // Convert to gray
-        cvtColor(upper_third, upper_third, COLOR_BGR2GRAY);
-
-        // Reduce the noise so we avoid false circle detection
-        GaussianBlur(upper_third, upper_third, Size(9, 9), 2, 2);
-        if (prev_upper_third.empty()) {
+        std::vector<std::vector<Point> > contours = get_contours(upper_third, prev_upper_third);
             prev_upper_third = upper_third;
-        } 
-
-        // get difference between frames (i.e. moving balls)
-        absdiff(upper_third, prev_upper_third, frame_delta);
-        threshold(frame_delta, processed_frame, 25, 255, THRESH_BINARY);
-
-        prev_upper_third = upper_third;
-
-        // erode and dilate to remove impurities
-        Mat element = getStructuringElement(MORPH_ELLIPSE, Size(9, 9), Point(-1, -1));
-        erode(processed_frame, processed_frame, element, Point(-1, -1), 2);
-        dilate(processed_frame, processed_frame, element, Point(-1, -1), 2);
-
-        // find contours
-        std::vector<std::vector<Point> > contours;
-        Mat processed_frame_copy = processed_frame.clone();  // prevent over-writing original data
-        findContours(processed_frame_copy, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
         if (contours.size() == 0) {
             prev_centers.clear();
@@ -99,6 +77,33 @@ int main(int argc, char* argv[]) {
     destroyAllWindows();
 
     return 0;
+}
+
+std::vector<std::vector<Point> > get_contours(Mat &upper_third, Mat &prev_upper_third) {
+    Mat frame_delta, processed_frame;
+
+    // Convert to gray
+    cvtColor(upper_third, upper_third, COLOR_BGR2GRAY);
+    if (prev_upper_third.empty()) {
+        prev_upper_third = upper_third;
+    } 
+
+    // Reduce the noise so we avoid false circle detection
+    GaussianBlur(upper_third, upper_third, Size(9, 9), 2, 2);
+
+    // get difference between frames (i.e. moving balls)
+    absdiff(upper_third, prev_upper_third, frame_delta);
+    threshold(frame_delta, processed_frame, 25, 255, THRESH_BINARY);
+
+    // erode and dilate to remove impurities
+    Mat element = getStructuringElement(MORPH_ELLIPSE, Size(9, 9), Point(-1, -1));
+    erode(processed_frame, processed_frame, element, Point(-1, -1), 2);
+    dilate(processed_frame, processed_frame, element, Point(-1, -1), 2);
+
+    // find contours
+    std::vector<std::vector<Point> > contours;
+    findContours(processed_frame, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    return contours;
 }
 
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers) {
