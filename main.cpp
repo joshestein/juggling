@@ -1,9 +1,12 @@
+#include <deque>
 #include <iostream>
 #include <limits>
 #include <math.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
+#define CUMULATIVE_CENTER 3
 
 using namespace cv;
 
@@ -13,12 +16,13 @@ std::vector<std::vector<Point> > get_contours(Mat &upper_third, Mat &prev_upper_
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
 int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
-direction get_direction(Point2f &center, std::vector<Point2f> &prev_centers);
+direction get_average_direction(std::deque<Point2f> &current_centers, std::deque<Point2f> &prev_centers);
 
 int main(int argc, char* argv[]) {
     VideoCapture cap(0);
-    std::vector<Point2f> prev_centers;
-    direction prev_dir = upwards;
+
+    std::deque<Point2f> prev_centers, current_centers;
+    direction prev_dir;
     int throws = 0;
     Mat frame, upper_third, prev_upper_third;
 
@@ -28,11 +32,9 @@ int main(int argc, char* argv[]) {
         upper_third = frame(Rect(0, 0, frame.cols, frame.rows/2));
 
         std::vector<std::vector<Point> > contours = get_contours(upper_third, prev_upper_third);
-            prev_upper_third = upper_third;
+        prev_upper_third = upper_third;
 
         if (contours.size() == 0) {
-            prev_centers.clear();
-            prev_dir = upwards;
             imshow("Frame", frame);
             if (waitKey(10) == 27) break;
             continue;
@@ -51,6 +53,18 @@ int main(int argc, char* argv[]) {
 
         approxPolyDP(contours[contour_idx], contours_poly, 3, true);
         minEnclosingCircle(contours_poly, center, radius);
+
+        // ensure we only keep <CUMULATIVE_CENTER> elements
+        if (current_centers.size() > CUMULATIVE_CENTER) {
+            current_centers.pop_front();
+        }
+        current_centers.push_back(center);
+
+        // copy current queue elements onto previous queue when previous queue is still being initiated
+        if (prev_centers.size() < CUMULATIVE_CENTER) {
+            prev_centers.push_back(center);
+        }
+
         // Point2f center = centers[i];
         // Scalar color(rand()&255, rand()&255, rand()&255);
         // drawContours(drawing, contours, i, color);
@@ -60,16 +74,18 @@ int main(int argc, char* argv[]) {
         // circle outline
         circle(frame, center, radius, Scalar(0,0,255), 3, 8, 0);
 
-        if (prev_centers.empty()) {
-            prev_centers.push_back(center);
-        }
-
-        direction dir = get_direction(center, prev_centers);
+        direction dir = get_average_direction(current_centers, prev_centers);
         if (prev_dir == upwards && dir == downwards) {
             throws += 1;
             std::cout << throws << std::endl;
         }
         prev_dir = dir;
+
+        if (prev_centers.size() > CUMULATIVE_CENTER) {
+            prev_centers.pop_front();
+        }
+        prev_centers.push_back(center);
+
         imshow("Frame", frame);
         if (waitKey(10) == 27) break;
     }
@@ -139,10 +155,23 @@ int get_largest_contour_idx(std::vector<std::vector<Point> > &contours) {
     return contour_idx;
 }
 
-direction get_direction(Point2f &center, std::vector<Point2f> &prev_centers) {
-    Point prev_center = find_closest_previous_center(center, prev_centers);
+direction get_average_direction(std::deque<Point2f> &current_centers, std::deque<Point2f> &prev_centers) {
+    // Point prev_center = find_closest_previous_center(center, prev_centers);
+
+    Point2f avg_current, avg_prev;
+
+    for (int i = 0; i < current_centers.size(); ++i) {
+        avg_current += current_centers[i];
+    }
+    avg_current /= (float)current_centers.size();
+
+    for (int i = 0; i < prev_centers.size(); ++i) {
+        avg_prev += prev_centers[i];
+    }
+    avg_prev /= (float)prev_centers.size();
+
     // row-major order
-    if (prev_center.y > center.y) {
+    if (avg_prev.y > avg_current.y) {
         return upwards;
     } else {
         return downwards;
