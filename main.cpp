@@ -7,11 +7,12 @@
 
 using namespace cv;
 
+enum direction {upwards, downwards};
+
 Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
 int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
-
-enum direction {upwards, downwards};
+direction get_direction(Point2f &center, std::vector<Point2f> &prev_centers);
 
 int main(int argc, char* argv[]) {
     VideoCapture cap(0);
@@ -81,26 +82,16 @@ int main(int argc, char* argv[]) {
         // circle outline
         circle(frame, center, radius, Scalar(0,0,255), 3, 8, 0);
 
-        direction dir;
         if (prev_centers.empty()) {
             prev_centers.push_back(center);
-        } else {
-            Point prev_center = find_closest_previous_center(center, prev_centers);
-
-            // row-major order
-            if (prev_center.y > center.y) {  // upwards
-                dir = upwards;
-            } else {  // downwards
-                dir = downwards;
-            }
-
-            if (prev_dir == upwards && dir == downwards) {
-                throws += 1;
-                std::cout << throws << std::endl;
-            }
-            prev_dir = dir;
-            
         }
+
+        direction dir = get_direction(center, prev_centers);
+        if (prev_dir == upwards && dir == downwards) {
+            throws += 1;
+            std::cout << throws << std::endl;
+        }
+        prev_dir = dir;
         imshow("Frame", frame);
         if (waitKey(10) == 27) break;
     }
@@ -141,4 +132,14 @@ int get_largest_contour_idx(std::vector<std::vector<Point> > &contours) {
         } 
     }
     return contour_idx;
+}
+
+direction get_direction(Point2f &center, std::vector<Point2f> &prev_centers) {
+    Point prev_center = find_closest_previous_center(center, prev_centers);
+    // row-major order
+    if (prev_center.y > center.y) {
+        return upwards;
+    } else {
+        return downwards;
+    }
 }
