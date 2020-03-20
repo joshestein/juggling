@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     VideoCapture cap(0);
     std::vector<Point> prev_centers;
     direction prev_dir;
-    int throws;
+    int throws = 0;
 
     while(true) {
         Mat frame, upper_third, upper_third_grey;
