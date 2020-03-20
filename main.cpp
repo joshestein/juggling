@@ -1,3 +1,4 @@
+#include <chrono>
 #include <deque>
 #include <iostream>
 #include <limits>
@@ -7,6 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #define MAX_CENTER_BUFFER 2
+#define IDLE_REST_TIME 3
 
 using namespace cv;
 
@@ -25,6 +27,7 @@ int main(int argc, char* argv[]) {
     direction prev_dir;
     int throws = 0;
     Mat frame, upper_third, prev_upper_third;
+    auto start = std::chrono::steady_clock::now();
 
     while(true) {
         cap >> frame;
@@ -35,9 +38,20 @@ int main(int argc, char* argv[]) {
         prev_upper_third = upper_third;
 
         if (contours.size() == 0) {
+            auto end = std::chrono::steady_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            if (elapsed_seconds.count() > IDLE_REST_TIME) {
+                std::cout << "\n----------------------------------\n";
+                std::cout << "Reseting throws";
+                std::cout << "\n----------------------------------\n";
+                throws = 0;
+                start = std::chrono::steady_clock::now();
+            }
             imshow("Frame", frame);
             if (waitKey(10) == 27) break;
             continue;
+        } else {
+            start = std::chrono::steady_clock::now();
         }
 
         // find largest circle
