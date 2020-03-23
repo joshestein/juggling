@@ -8,7 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #define MAX_CENTER_BUFFER 2
-#define IDLE_REST_TIME 3
+#define IDLE_REST_TIME 1.5
 
 using namespace cv;
 
