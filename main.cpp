@@ -7,7 +7,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#define MAX_CENTER_BUFFER 2
+#define MAX_CENTER_BUFFER 3
 #define IDLE_REST_TIME 1.5
 
 using namespace cv;
