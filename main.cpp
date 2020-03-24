@@ -23,8 +23,8 @@ struct ball {
     ball(Point2f center, float p_radius) {
         center_buffer.push_back(center);
         radius = p_radius;
-        // dir = upwards;
-        // prev_dir = upwards;
+        dir = upwards;
+        prev_dir = upwards;
     }
 
     void update_center(Point2f &center) {
