@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <unistd.h>
 
 #define MAX_CENTER_BUFFER 3
 #define IDLE_REST_TIME 1.5
@@ -45,15 +46,31 @@ void update_ball_center(ball &ball, Point2f &center);
 direction get_direction(std::deque<Point2f> &center_buffer);
 
 int main(int argc, char* argv[]) {
+    int opt;
     int throws = 0;
     std::vector<ball> balls;
     Mat frame, upper_third, prev_upper_third;
     auto start = std::chrono::steady_clock::now();
+    VideoCapture cap;
 
-    VideoCapture cap(0);
+    while((opt = getopt(argc, argv, "f:")) != -1) {
+        switch(opt) {
+        case 'f':
+            cap.open(optarg);
+            break;
+        }
+    }
+
+    if (!cap.isOpened()) {
+        cap.open(0);  // default cam
+    }
 
     while(true) {
         cap >> frame;
+
+        if (frame.empty()) { 
+            break;
+        }
 
         upper_third = frame(Rect(0, 0, frame.cols, frame.rows/2));
 
