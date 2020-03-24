@@ -14,8 +14,28 @@ using namespace cv;
 
 enum direction {upwards, downwards};
 
+struct ball {
+    std::deque<Point2f> center_buffer;
+    float radius;
+    direction dir;
+    direction prev_dir;
+
+    ball(Point2f center, float p_radius) {
+        center_buffer.push_back(center);
+        radius = p_radius;
+        // dir = upwards;
+        // prev_dir = upwards;
+    }
+
+    void update_center(Point2f &center) {
+        if (center_buffer.size() > MAX_CENTER_BUFFER) {
+            center_buffer.pop_front();
+        }
+        center_buffer.push_back(center);
+    }
+};
+
 std::vector<std::vector<Point> > get_contours(Mat &upper_third, Mat &prev_upper_third);
-Point find_closest_previous_center(Point2f &p, std::vector<Point2f> &prev_centers);
 double euclidean_distance(Point2f &p1, Point2f &p2);
 int get_largest_contour_idx(std::vector<std::vector<Point> > &contours);
 direction get_direction(std::deque<Point2f> &center_buffer);
